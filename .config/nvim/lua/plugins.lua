@@ -222,21 +222,21 @@ return {
 		opts = {},
 	},
 
-	{
-		"tpope/vim-fugitive",
-		cmd = { "Git", "G" },
-		keys = {
-			{
-				"<leader>gs",
-				"<cmd>tab Git<CR>",
-				desc = "Git status",
-			},
-		},
-	},
+	-- {
+	-- 	"tpope/vim-fugitive",
+	-- 	cmd = { "Git", "G" },
+	-- 	keys = {
+	-- 		{
+	-- 			"<leader>gs",
+	-- 			"<cmd>tab Git<CR>",
+	-- 			desc = "Git status",
+	-- 		},
+	-- 	},
+	-- },
 
 	{
 		"NeogitOrg/neogit",
-		enabled = false,
+		enabled = true,
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 			"sindrets/diffview.nvim",
@@ -474,32 +474,38 @@ return {
 
 	{
 		"nvim-treesitter/nvim-treesitter",
-		branch = "master",
+		branch = "main",
 		lazy = false,
 		build = ":TSUpdate",
-		config = function()
-			local configs = require("nvim-treesitter.configs")
+		init = function()
+			local nvim_treesitter = require("nvim-treesitter")
+			local nvim_treesitter_config = require("nvim-treesitter.config")
+			local ensure_installed = require("config.languages")
+			local already_installed = nvim_treesitter_config.get_installed()
+			local parsers_to_install = vim
+				.iter(ensure_installed)
+				:filter(function(parser)
+					return not vim.tbl_contains(already_installed, parser)
+				end)
+				:totable()
 
-			configs.setup({
-				ensure_installed = require("config.languages").ensure_installed,
-				sync_install = false,
-				auto_install = true,
-				ignore_install = {},
-				modules = {},
+			nvim_treesitter.install(parsers_to_install)
 
-				highlight = {
-					enable = true,
-					disable = function(lang, buf)
-						local max_filesize = 1024 * 1024 -- 1 MB
-						local ok, stats = pcall(vim.loop.fs_stat, vim.api.nvim_buf_get_name(buf))
-						if ok and stats and stats.size > max_filesize then
-							return true
+			vim.api.nvim_create_autocmd("FileType", {
+				callback = function(args)
+					local ft = vim.bo[args.buf].filetype
+
+					already_installed = nvim_treesitter_config.get_installed()
+					if not vim.tbl_contains(already_installed, ft) then
+						if vim.tbl_contains(nvim_treesitter.get_available(), ft) then
+							nvim_treesitter.install(ft)
 						end
-					end,
-
-					additional_vim_regex_highlighting = false,
-				},
-				indent = { enable = true },
+					end
+					-- Enable treesitter highlighting and disable regex syntax
+					pcall(vim.treesitter.start)
+					-- Enable treesitter-based indentation
+					vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+				end,
 			})
 		end,
 	},
