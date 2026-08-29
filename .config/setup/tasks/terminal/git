@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+. "$SETUP_PATH/lib"
+
+log_step "Setting up git config..."
+
+git config --global user.email "gautamtiwari.dev@gmail.com"
+git config --global user.name "Gautam Tiwari"
